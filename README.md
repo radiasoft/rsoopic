@@ -1,13 +1,16 @@
-### rsoopic
-
-Python implementation of some aspects of the C/C++ code XOOPIC
+### Python implementation of some aspects of the C/C++ code XOOPIC
 
 Learn more at https://github.com/radiasoft/rsoopic.
 
-Documentation: http://rsoopic.readthedocs.org/en/latest/
+Documentation (not yet implemented): http://rsoopic.readthedocs.org/en/latest/
 
 #### License
 
-License: http://www.apache.org/licenses/LICENSE-2.0.html
+GPL V2 (identical to the license of the XOOPIC source code)
 
+See LICENSE file for details.
+
+***
 Copyright (c) 2016 RadiaSoft LLC.  All Rights Reserved.
+
+![RadiaSoft](https://github.com/radiasoft/images/blob/master/corporate/RadiaSoftLogoTransparent.png)
