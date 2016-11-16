@@ -199,13 +199,15 @@ def generateAngle(nnew, emitted_energy, incident_energy):
     This inversion is explained in detail in [4].
     """
 
+    T = incident_energy
+    W = emitted_energy
     g2 = G_2(T, W)
     g3 = G_3(T, W)
     F = np.random.uniform(size=nnew)
 
-    theta = np.arccos(g2 + g3 * np.tan((1-F) * np.arctan2((1-g2), g3) -
-                      F * np.arctan2((1+g2), g3))
-                      )
+    theta = np.nan_to_num(np.arccos(g2 + g3 * np.tan(
+        (1-F) * np.arctan2((1-g2), g3) - F * np.arctan2((1+g2), g3))
+    ))
     return theta
 
 
@@ -221,7 +223,7 @@ def G_2(T, W):
     T - incident electron energy (in eV)
     W - emitted electon energy (in eV)
     """
-    return np.sqrt((W+I)/T * (T+2*emassEV) / (W+2*emassEV))
+    return np.sqrt(np.divide(W+I, T) * np.divide(T+2*emassEV, W+2*emassEV))
 
 
 def G_3(T, W):
@@ -229,7 +231,7 @@ def G_3(T, W):
     T - incident electron energy (in eV)
     W - emitted electon energy (in eV)
     """
-    return alpha(T) * np.sqrt(I/W * (T - (W+I)) / T)
+    return alpha(T) * np.sqrt(np.divide(I, W) * np.divide(T - (W+I), T))
 
 
 def F(t):
