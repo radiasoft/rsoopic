@@ -2,7 +2,7 @@
 """
 Utility module for calculating ionization cross-sections for H2, a la:
 
-[1] Yong-Ki Kim, José Paulo Santos, and Fernando Parente,
+[1] Yong-Ki Kim, Jose Paulo Santos, and Fernando Parente,
     "Extension of the binary-encounter-dipole model to relativistic
     incident electrons", Phys. Rev. A 62, 052710, 13 October 2000
     <http://teddy.physics.utah.edu/papers/physrev/PRA52710.pdf>
@@ -54,23 +54,30 @@ def h2_ioniz_crosssection(vi=None):
     vi - incident electron velocity in m/s; this is passed in from warp as vxi=uxi*gaminvi etc.
     Cross section sigma is given by Eq. (22) in Ref. [1]
     """
+    t = normalizedKineticEnergy(vi)
+    if t <= 1:
+        return 0.
+
     beta = lambda E: math.sqrt(1. - 1. / (1. + E / emassEV)**2)
 
     # initialize needed variables
     beta_t = vi / clight
     beta_u = beta(U)
     beta_b = beta(I)
-    print 'h2_ioniz_crosssection():', beta_t, beta_u, beta_b
-    t = normalizedKineticEnergy(vi)
     bprime = I / emassEV
     tprime = t * bprime
     if not useMollerApproximation:
         # now add terms to sigma, one by one:
         sigma = math.log(beta_t**2 / (1. - beta_t**2)) - beta_t**2 - math.log(2. * bprime)
+        #print sigma, t, tprime
         sigma *= .5 * (1. - 1. / (t * t))
+        #print sigma
         sigma += 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + .5 * tprime)**2
+        #print sigma
         sigma += bprime**2 / (1. + .5 * tprime)**2 * (t - 1) / 2.
+        #print sigma
         sigma *= 4. * np.pi * a_0**2 * fine_structure**4 * N / (beta_t**2 + beta_u**2 + beta_b**2) / (2. * bprime)
+        #print sigma
     else:
         sigma = 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + tprime)**2
         sigma += bprime**2 / (1. + tprime)**2 * (t - 1.) / 2.
