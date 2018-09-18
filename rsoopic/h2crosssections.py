@@ -10,6 +10,8 @@ Utility module for calculating ionization cross-sections for H2, a la:
 [2] D. Bruhwiler, "RNG Calculations for Scattering in XOOPIC", Tech-X Note, 2000
 """
 from __future__ import division
+import math
+import random
 import time
 import numpy as np
 # any import from warp will trigger arg parsing, which will fail without this
@@ -62,13 +64,17 @@ def h2_ioniz_crosssection(vi=None):
     t = normalizedKineticEnergy(vi)
     bprime = I / emassEV
     tprime = t * bprime
-
-    # now add terms to sigma, one by one:
-    sigma = math.log(beta_t**2 / (1. - beta_t**2)) - beta_t**2 - math.log(2. * bprime)
-    sigma *= .5 * (1. - 1. / (t * t))
-    sigma += 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + .5 * tprime)**2
-    sigma += bprime**2 / (1. + .5 * tprime)**2 * (t - 1) / 2.
-    sigma *= 4. * np.pi * a_0**2 * fine_structure**4 * N / (beta_t**2 + beta_u**2 + beta_b**2) / (2. * bprime)
+    if not useMollerApproximation:
+        # now add terms to sigma, one by one:
+        sigma = math.log(beta_t**2 / (1. - beta_t**2)) - beta_t**2 - math.log(2. * bprime)
+        sigma *= .5 * (1. - 1. / (t * t))
+        sigma += 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + .5 * tprime)**2
+        sigma += bprime**2 / (1. + .5 * tprime)**2 * (t - 1) / 2.
+        sigma *= 4. * np.pi * a_0**2 * fine_structure**4 * N / (beta_t**2 + beta_u**2 + beta_b**2) / (2. * bprime)
+    else:
+        sigma = 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + tprime)**2
+        sigma += bprime**2 / (1. + tprime)**2 * (t - 1.) / 2.
+        sigma *= 4. * np.pi * a_0**2 * fine_structure**2 * N * (R / I) / (beta_t * beta_t)
 
     return sigma
 
@@ -83,6 +89,14 @@ def ejectedEnergy(vi, nnew):
     tstart = time.time()
     gamma_inc = 1/np.sqrt(1-(vi/clight)**2)
     impactEnergy = (gamma_inc-1) * emassEV
+
+    if useMollerApproximation:
+        eps_min = 10.
+        wOutMoller = np.empty((nnew))
+        for i in range(nnew):
+            Xrand = random.random()
+            wOutMoller[i] = impactEnergy[i] * eps_min / (impactEnergy[i] - Xrand * (impactEnergy[i] - 2 * eps_min))
+        return wOutMoller
 
     tPlusMC = impactEnergy + emassEV
     twoTplusMC = impactEnergy + tPlusMC
@@ -169,6 +183,15 @@ def generateAngle(nnew, emitted_energy, incident_energy):
 
     This inversion is explained in detail in [2].
     """
+
+    if useMollerApproximation:
+        thetaMoller = np.empty((nnew))
+        for i in range(nnew):
+            costheta = emitted_energy[i] * (incident_energy[i] + 2. * emassEV)
+            costheta /= incident_energy[i] * (emitted_energy[i] + 2. * emassEV)
+            costheta = math.sqrt(costheta)
+            thetaMoller[i] = math.acos(costheta)
+        return thetaMoller
 
     T = incident_energy
     W = emitted_energy
