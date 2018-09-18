@@ -2,19 +2,12 @@
 """
 Utility module for calculating ionization cross-sections for H2, a la:
 
-[1] M. E. Rudd, "Differential and total cross sections for ionization of helium and
-    hydrogen by electrons," Physical Review A, vol. 44, no. 3, pp. 1644-1652,
-    08/01/, 1991. http://dx.doi.org/10.1103/PhysRevA.44.1644
+[1] Yong-Ki Kim, José Paulo Santos, and Fernando Parente,
+    "Extension of the binary-encounter-dipole model to relativistic
+    incident electrons", Phys. Rev. A 62, 052710, 13 October 2000
+    <http://teddy.physics.utah.edu/papers/physrev/PRA52710.pdf>
 
-[2] M. E. Rudd et al., "Doubly differential electron-production cross sections
-    for 200-1500-eV e-+ H2 collisions," Physical Review A, vol. 47, no. 3,
-    pp. 1866, 1993. http://dx.doi.org/10.1103/PhysRevA.47.1866
-
-[3] J.P. Verboncoeur, A.B. Langdon and N.T. Gladd,
-    "An Object-Oriented Electromagnetic PIC Code", Comp. Phys. Comm., 87, May11,
-    1995, pp. 199-211.
-
-[4] D. Bruhwiler, "RNG Calculations for Scattering in XOOPIC", Tech-X Note, 2000
+[2] D. Bruhwiler, "RNG Calculations for Scattering in XOOPIC", Tech-X Note, 2000
 
 """
 from __future__ import division
@@ -34,56 +27,20 @@ N = 2  # number of electrons in target (H2)
 S = 4 * np.pi * bohr_radius**2 * N * (R/I)**2
 fitparametern = 2.4  # species-dependent fitting parameter
 
+useMollerApproximation = False
 
-def h2_ioniz_ddcs(vi=None, vo=None, theta=None):
+def n2_ioniz_ddcs(vi=None, vo=None, theta=None):
     """
-    Compute the doubly-differential cross-section for impact ionization of H2 by e-, from [2]
-    vi - incident electron velocity in m/s; this is passed in from warp as vxi=uxi*gaminvi etc.
-    vo - ejected electron velocity in m/s
-    theta - angle (in rad) of emitted secondary, relative to primary; e.g. [0,pi/2) is forward, (pi/2,pi] is backwards
+    Compute the doubly-differential cross-section (not implemented)
     """
-    t = normalizedKineticEnergy(vi)
-    w = normalizedKineticEnergy(vo)
-
-    B = 0.6
-    y = 10
-    G2 = np.sqrt((w+1)/t)
-    G3 = B * np.sqrt((1-G2**2)/w)
-    G4 = y * (1-w/t)**3 / (t*(w+1))
-    G5 = 0.33
-    gb = 2.9
-    gBE = 2*np.pi * G3 * (np.arctan2((1-G2), G3) + np.arctan2((1+G2), G3))
-
-    def F(t):
-        """
-        Modified form with additional a4 parameter and different fit.  See Eq. (7) of [2]
-        """
-        # Parameters for H2 specific to this fit
-        a1 = 0.55
-        a2 = 1.73
-        a3 = -0.14
-        a4 = 2.9
-        return np.divide(a1*np.log(t), t) + np.divide(a2, t+a4) + np.divide(a3, t**2)
-
-    G1 = S * F(t) * f_1(w, t) / I / (gBE + G4 * gb)
-
-    fBE = 1 / (1 + ((np.cos(theta) - G2) / G3)**2)
-    fb = 1 / (1 + ((np.cos(theta) + 1) / G5)**2)
-
-    sigma = G1 * (fBE + G4 * fb)
-    return np.nan_to_num(sigma)
+    return 0.
 
 
-def h2_ioniz_sdcs(vi=None, vo=None):
+def n2_ioniz_sdcs(vi=None, vo=None):
     """
-    Compute the differential cross-section (sigma(w, t)) for impact ionization of H2 by e-, per David's formula
-    vi - incident electron velocity in m/s; this is passed in from warp as vxi=uxi*gaminvi etc.
-    vo - velocity in m/s of emitted electron
+    Compute the differential cross-section (not implemented)
     """
-    t = normalizedKineticEnergy(vi)
-    w = normalizedKineticEnergy(vo)
-    sigma = S * F(t) * f_1(w, t) / I
-    return np.nan_to_num(sigma)
+    return 0.
 
 
 def h2_ioniz_crosssection(vi=None):
@@ -95,16 +52,16 @@ def h2_ioniz_crosssection(vi=None):
 
     n = fitparametern
 
-    def g1(t, n):
+    def g1(t, n): # Eq. 7 in Ref. [1]
         return (1 - t**(1-n)) / (n-1) - (2 / (t+1))**(n/2) * (1 - t**(1 - n/2)) / (n-2)
 
-    sigma = S * F(t) * g1(t, n)
+    sigma = S * F(t) * g1(t, n) # Eq. 6 in Ref. [1]
     return np.nan_to_num(sigma)
 
 
 def ejectedEnergy(vi, nnew):
     """
-    Selection of an ejected electron energy (in eV) based on [1], adapted from
+    Selection of an ejected electron energy (in eV), adapted from
     XOOPIC's MCCPackage::ejectedEnergy routine
     """
     vi = vi[0:nnew]  # We may be given more velocities than we actually need
@@ -176,7 +133,7 @@ def generateAngle(nnew, emitted_energy, incident_energy):
     nnew - number of new particles
 
     Selection of after-ionization angles for the primary and secondary electrons
-    adapted from XOOPIC's [3] MCCPackage::primarySecondaryAngles routine.
+    adapted from XOOPIC's MCCPackage::primarySecondaryAngles routine.
 
     ## The general idea ##
     The cross-section $\sigma(w, t, \theta)$ dictates the likelihood
@@ -196,7 +153,7 @@ def generateAngle(nnew, emitted_energy, incident_energy):
     If we can invert this expression to get $\theta$ as a function of $w, t$, and $F(\theta)$, we can
     sample this distribution by choosing a random number for $F(\theta)$ and the known values of $w, t$.
 
-    This inversion is explained in detail in [4].
+    This inversion is explained in detail in [1].
     """
 
     T = incident_energy
