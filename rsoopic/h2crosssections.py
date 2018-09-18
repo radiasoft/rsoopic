@@ -34,6 +34,17 @@ N = 2  # number of electrons in target (H2)
 
 useMollerApproximation = False
 
+def toggleMollerFlag():
+    """
+    Change the value of the flag that enables the Moller approximation
+    """
+    if useMollerApproximation:
+        useMollerApproximation = False
+    else:
+        useMollerApproximation = True
+    return useMollerApproximation
+
+
 def n2_ioniz_ddcs(vi=None, vo=None, theta=None):
     """
     Compute the doubly-differential cross-section (not implemented)
