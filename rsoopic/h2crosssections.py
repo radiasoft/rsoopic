@@ -8,7 +8,6 @@ Utility module for calculating ionization cross-sections for H2, a la:
     <http://teddy.physics.utah.edu/papers/physrev/PRA52710.pdf>
 
 [2] D. Bruhwiler, "RNG Calculations for Scattering in XOOPIC", Tech-X Note, 2000
-
 """
 from __future__ import division
 import time
@@ -18,14 +17,18 @@ import numpy as np
 import warpoptions
 warpoptions.ignoreUnknownArgs = True
 from warp import emass, clight, jperev
-
+from scipy.constants import physical_constants, fine_structure # fine-structure constant
+a_0 = physical_constants['Bohr radius'][0]
+#bohr_radius = 5.29177e-11 # Bohr Radius (in m)
 emassEV = emass*clight**2/jperev
-bohr_radius = 5.29177e-11  # Bohr Radius (in m)
-I = 15.42593  # Threshold ionization energy (in eV), from the NIST Standard Reference Database (via NIST Chemistry WebBook)
+
+I = 15.42593  # threshold ionization energy (in eV), from the NIST Standard Reference Database (via NIST Chemistry WebBook)
+U = 15.98 # average orbital kinetic energy (in eV) (value taken from https://physics.nist.gov/PhysRefData/Ionization/intro.html)
 R = 13.60569  # Rydberg energy (in eV)
 N = 2  # number of electrons in target (H2)
-S = 4 * np.pi * bohr_radius**2 * N * (R/I)**2
-fitparametern = 2.4  # species-dependent fitting parameter
+
+#S = 4. * np.pi * bohr_radius**2 * N * (R/I)**2
+#fitparametern = 2.4  # species-dependent fitting parameter
 
 useMollerApproximation = False
 
@@ -47,16 +50,27 @@ def h2_ioniz_crosssection(vi=None):
     """
     Compute the total cross-section for impact ionization of H2 by e-
     vi - incident electron velocity in m/s; this is passed in from warp as vxi=uxi*gaminvi etc.
+    Cross section sigma is given by Eq. (22) in Ref. [1]
     """
+    beta = lambda E: math.sqrt(1. - 1. / (1. + E / emassEV)**2)
+
+    # initialize needed variables
+    beta_t = vi / clight
+    beta_u = beta(U)
+    beta_b = beta(I)
+    print 'h2_ioniz_crosssection():', beta_t, beta_u, beta_b
     t = normalizedKineticEnergy(vi)
+    bprime = I / emassEV
+    tprime = t * bprime
 
-    n = fitparametern
+    # now add terms to sigma, one by one:
+    sigma = math.log(beta_t**2 / (1. - beta_t**2)) - beta_t**2 - math.log(2. * bprime)
+    sigma *= .5 * (1. - 1. / (t * t))
+    sigma += 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + .5 * tprime)**2
+    sigma += bprime**2 / (1. + .5 * tprime)**2 * (t - 1) / 2.
+    sigma *= 4. * np.pi * a_0**2 * fine_structure**4 * N / (beta_t**2 + beta_u**2 + beta_b**2) / (2. * bprime)
 
-    def g1(t, n): # Eq. 7 in Ref. [1]
-        return (1 - t**(1-n)) / (n-1) - (2 / (t+1))**(n/2) * (1 - t**(1 - n/2)) / (n-2)
-
-    sigma = S * F(t) * g1(t, n) # Eq. 6 in Ref. [1]
-    return np.nan_to_num(sigma)
+    return sigma
 
 
 def ejectedEnergy(vi, nnew):
@@ -153,7 +167,7 @@ def generateAngle(nnew, emitted_energy, incident_energy):
     If we can invert this expression to get $\theta$ as a function of $w, t$, and $F(\theta)$, we can
     sample this distribution by choosing a random number for $F(\theta)$ and the known values of $w, t$.
 
-    This inversion is explained in detail in [1].
+    This inversion is explained in detail in [2].
     """
 
     T = incident_energy
@@ -189,25 +203,6 @@ def G_3(T, W):
     W - emitted electon energy (in eV)
     """
     return alpha(T) * np.sqrt(np.divide(I, W) * np.divide(T - (W+I), T))
-
-
-def F(t):
-    """
-    The Bethe-like function in Rudd's modification of the Mott equation.
-    See [1] eq. 9
-    """
-    # Parameters for H2 specific to this fit
-    a1 = 0.74
-    a2 = 0.87
-    a3 = -0.60
-    return np.divide(1, t) * (a1 * np.log(t) + a2 + a3 * np.divide(1, t))
-
-
-def f_1(w, t, n=fitparametern):
-    """
-    The Mott-like expression in Rudd's cross-section, see [1] eq. 4
-    """
-    return np.divide(1, (w+1)**n) + np.divide(1, (t-w)**n) - np.divide(1, ((w+1) * (t-w))**(n/2.))
 
 
 def normalizedKineticEnergy(vi=None):
