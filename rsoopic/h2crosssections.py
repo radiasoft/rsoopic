@@ -81,11 +81,11 @@ def h2_ioniz_crosssection(vi=None):
         #sigma *= 4. * np.pi * a_0**2 * fine_structure**2 * N * (R / I) / (beta_t * beta_t)
         mec2 = emass * clight**2
         kappa = 2. * math.pi * r_0**2 * mec2 / (beta_t * beta_t)
-        eps_min = 10. * jperev
+        eps_min = 1.2 * jperev
         eps = tprime * mec2
         sigma = 1. / eps_min - 1. / (eps - eps_min)
         sigma += (eps - 2. * eps_min) / (2. * (mec2 + eps)**2)
-        sigma += mec2 * (mec2 + 2. * eps) / (eps * (mec2 + eps)**2) \
+        sigma += mec2 * (mec2 + 2. * eps) / (eps * (mec2 + eps)**2) * \
         math.log(eps_min / (eps - eps_min))
         sigma *= kappa
 
