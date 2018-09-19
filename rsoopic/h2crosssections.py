@@ -21,7 +21,7 @@ warpoptions.ignoreUnknownArgs = True
 from warp import emass, clight, jperev
 from scipy.constants import physical_constants, fine_structure # fine-structure constant
 a_0 = physical_constants['Bohr radius'][0]
-#bohr_radius = 5.29177e-11 # Bohr Radius (in m)
+r_0 = physical_constants['classical electron radius'][0]
 emassEV = emass*clight**2/jperev
 
 I = 15.42593  # threshold ionization energy (in eV), from the NIST Standard Reference Database (via NIST Chemistry WebBook)
@@ -29,21 +29,7 @@ U = 15.98 # average orbital kinetic energy (in eV) (value taken from https://phy
 R = 13.60569  # Rydberg energy (in eV)
 N = 2  # number of electrons in target (H2)
 
-#S = 4. * np.pi * bohr_radius**2 * N * (R/I)**2
-#fitparametern = 2.4  # species-dependent fitting parameter
-
 useMollerApproximation = False
-
-def toggleMollerFlag():
-    """
-    Change the value of the flag that enables the Moller approximation
-    """
-    if useMollerApproximation:
-        useMollerApproximation = False
-    else:
-        useMollerApproximation = True
-    return useMollerApproximation
-
 
 def n2_ioniz_ddcs(vi=None, vo=None, theta=None):
     """
@@ -90,9 +76,18 @@ def h2_ioniz_crosssection(vi=None):
         sigma *= 4. * np.pi * a_0**2 * fine_structure**4 * N / (beta_t**2 + beta_u**2 + beta_b**2) / (2. * bprime)
         #print sigma
     else:
-        sigma = 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + tprime)**2
-        sigma += bprime**2 / (1. + tprime)**2 * (t - 1.) / 2.
-        sigma *= 4. * np.pi * a_0**2 * fine_structure**2 * N * (R / I) / (beta_t * beta_t)
+        #sigma = 1. - 1. / t - math.log(t) / (t + 1.) * (1. + 2. * tprime) / (1. + tprime)**2
+        #sigma += bprime**2 / (1. + tprime)**2 * (t - 1.) / 2.
+        #sigma *= 4. * np.pi * a_0**2 * fine_structure**2 * N * (R / I) / (beta_t * beta_t)
+        mec2 = emass * clight**2
+        kappa = 2. * math.pi * r_0**2 * mec2 / (beta_t * beta_t)
+        eps_min = 10. * jperev
+        eps = tprime * mec2
+        sigma = 1. / eps_min - 1. / (eps - eps_min)
+        sigma += (eps - 2. * eps_min) / (2. * (mec2 + eps)**2)
+        sigma += mec2 * (mec2 + 2. * eps) / (eps * (mec2 + eps)**2) \
+        math.log(eps_min / (eps - eps_min))
+        sigma *= kappa
 
     return sigma
 
